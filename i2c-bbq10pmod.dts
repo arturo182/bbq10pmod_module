@@ -1,0 +1,23 @@
+/dts-v1/;
+/plugin/;
+
+/{
+	compatible = "brcm,bcm2708";
+
+	fragment@0 {
+		target = <&i2c1>;
+		
+		__overlay__ {
+			bbq10pmod@1f {
+				compatible = "arturo182,bbq10pmod";
+				
+				reg = <0x1f>;
+				
+				irq-gpio = <&gpio 11 0x2>;
+				interrupts = <11 2>;
+				interrupt-parent = <&gpio>;
+				interrupt-controller;
+			};
+		};
+	};
+};
