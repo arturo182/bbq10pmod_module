@@ -10,6 +10,8 @@
 #include <linux/types.h>
 #include <linux/input/sparse-keymap.h>
 
+//#define DEBUG
+
 #define REG_VER		0x01
 #define REG_CFG		0x02
 #define REG_INT		0x03
@@ -22,6 +24,8 @@
 
 #define WRITE_MASK	BIT(7)
 
+#define CFG_USE_MODS		BIT(7)
+#define CFG_REPORT_MODS		BIT(6)
 #define CFG_PANIC_INT		BIT(5)
 #define CFG_KEY_INT			BIT(4)
 #define CFG_NUMLOCK_INT		BIT(3)
@@ -35,9 +39,8 @@
 #define INT_CAPSLOCK	BIT(1)
 #define INT_OVERFLOW	BIT(0)
 
-//#define KEY_NUMLOCK		BIT(6)
-//#define KEY_CAPSLOCK	BIT(5)
-
+#define _KEY_NUMLOCK	BIT(6)
+#define _KEY_CAPSLOCK	BIT(5)
 #define KEY_COUNT_MASK	0x1F
 
 #define STATE_RELEASE	3
@@ -51,53 +54,51 @@ struct bbq10pmod_data {
 };
 
 static const struct key_entry bbq10pmod_keys[] = {
-	{ KE_KEY, 'a', { KEY_A } },
-	{ KE_KEY, 'b', { KEY_B } },
-	{ KE_KEY, 'c', { KEY_C } },
-	{ KE_KEY, 'd', { KEY_D } },
-	{ KE_KEY, 'e', { KEY_E } },
-	{ KE_KEY, 'f', { KEY_F } },
-	{ KE_KEY, 'g', { KEY_G } },
-	{ KE_KEY, 'h', { KEY_H } },
-	{ KE_KEY, 'i', { KEY_I } },
-	{ KE_KEY, 'j', { KEY_J } },
-	{ KE_KEY, 'k', { KEY_K } },
-	{ KE_KEY, 'l', { KEY_L } },
-	{ KE_KEY, 'm', { KEY_M } },
-	{ KE_KEY, 'n', { KEY_N } },
-	{ KE_KEY, 'o', { KEY_O } },
-	{ KE_KEY, 'p', { KEY_P } },
-	{ KE_KEY, 'q', { KEY_Q } },
-	{ KE_KEY, 'r', { KEY_R } },
-	{ KE_KEY, 's', { KEY_S } },
-	{ KE_KEY, 't', { KEY_T } },
-	{ KE_KEY, 'u', { KEY_U } },
-	{ KE_KEY, 'w', { KEY_W } },
-	{ KE_KEY, 'v', { KEY_V } },
-	{ KE_KEY, 'x', { KEY_X } },
-	{ KE_KEY, 'y', { KEY_Y } },
-	{ KE_KEY, 'z', { KEY_Z } },
-	{ KE_KEY, '0', { KEY_0 } },
-	{ KE_KEY, '1', { KEY_1 } },
-	{ KE_KEY, '2', { KEY_2 } },
-	{ KE_KEY, '3', { KEY_3 } },
-	{ KE_KEY, '4', { KEY_4 } },
-	{ KE_KEY, '5', { KEY_5 } },
-	{ KE_KEY, '6', { KEY_6 } },
-	{ KE_KEY, '7', { KEY_7 } },
-	{ KE_KEY, '8', { KEY_8 } },
-	{ KE_KEY, '9', { KEY_9 } },
-	{ KE_KEY, '-', { KEY_MINUS } },
-	//{ KE_KEY, '+', { KEY_PLUS } },
-	{ KE_KEY, '=', { KEY_EQUAL } },
+	{ KE_KEY, 0x01, { KEY_UP } },
+	{ KE_KEY, 0x02, { KEY_DOWN } },
+	{ KE_KEY, 0x03, { KEY_LEFT } },
+	{ KE_KEY, 0x04, { KEY_RIGHT } },
+	{ KE_KEY, 0x05, { KEY_ENTER } },
+	{ KE_KEY, 0x06, { KEY_MENU } },
+	{ KE_KEY, 0x07, { KEY_BACK } },
+
+	{ KE_KEY, 17, { KEY_LEFTALT } },
+	{ KE_KEY, 18, { KEY_LEFTSHIFT } },
+	{ KE_KEY, 19, { KEY_LEFTCTRL } },
+
+	{ KE_KEY, 'A', { KEY_A } },
+	{ KE_KEY, 'B', { KEY_B } },
+	{ KE_KEY, 'C', { KEY_C } },
+	{ KE_KEY, 'D', { KEY_D } },
+	{ KE_KEY, 'E', { KEY_E } },
+	{ KE_KEY, 'F', { KEY_F } },
+	{ KE_KEY, 'G', { KEY_G } },
+	{ KE_KEY, 'H', { KEY_H } },
+	{ KE_KEY, 'I', { KEY_I } },
+	{ KE_KEY, 'J', { KEY_J } },
+	{ KE_KEY, 'K', { KEY_K } },
+	{ KE_KEY, 'L', { KEY_L } },
+	{ KE_KEY, 'M', { KEY_M } },
+	{ KE_KEY, 'N', { KEY_N } },
+	{ KE_KEY, 'O', { KEY_O } },
+	{ KE_KEY, 'P', { KEY_P } },
+	{ KE_KEY, 'Q', { KEY_Q } },
+	{ KE_KEY, 'R', { KEY_R } },
+	{ KE_KEY, 'S', { KEY_S } },
+	{ KE_KEY, 'T', { KEY_T } },
+	{ KE_KEY, 'U', { KEY_U } },
+	{ KE_KEY, 'W', { KEY_W } },
+	{ KE_KEY, 'V', { KEY_V } },
+	{ KE_KEY, 'X', { KEY_X } },
+	{ KE_KEY, 'Y', { KEY_Y } },
+	{ KE_KEY, 'Z', { KEY_Z } },
 	{ KE_KEY, '\b', { KEY_BACKSPACE } },
 	{ KE_KEY, ' ', { KEY_SPACE } },
-	//{ KE_KEY, '', { KEY_ } },
-	//{ KE_KEY, '', { KEY_ } },
-	//{ KE_KEY, '', { KEY_ } },
-	//{ KE_KEY, '', { KEY_ } },
-	//{ KE_KEY, '', { KEY_ } },
-	//{ KE_KEY, '', { KEY_ } },
+	{ KE_KEY, '\n', { KEY_ENTER } },
+	{ KE_KEY, '~', { KEY_GRAVE } },
+
+	{ KE_KEY, 254, { KEY_NUMLOCK } },
+	{ KE_KEY, 255, { KEY_CAPSLOCK } },
 };
 
 static unsigned int sparse_keymap_get_key_index(struct input_dev *dev,
@@ -272,20 +273,19 @@ static int bbq10pmod_write_reg(struct bbq10pmod_data *drv_data, u8 reg)
 {
 	struct i2c_client *client = drv_data->client;
 	int error;
-	
+
 	struct i2c_msg msgs[] = {
 		{ .addr = client->addr, .flags = I2C_M_STOP, .len = sizeof(u8), .buf = &reg, },
 	};
-	
+
 	error = i2c_transfer(client->adapter, msgs, ARRAY_SIZE(msgs));
 	if (error != ARRAY_SIZE(msgs)) {
-		dev_err(&client->dev,
-		"%s failed, reg: %d, error: %d\n",
+		dev_err(&client->dev, "%s failed, reg: %d, error: %d\n",
 		__func__, reg, error);
-		
+
 		return error;
 	}
-	
+
 	return 0;
 }
 
@@ -293,21 +293,22 @@ static int bbq10pmod_write_data(struct bbq10pmod_data *drv_data, u8 reg, u8 *buf
 {
 	struct i2c_client *client = drv_data->client;
 	int error;
-	
+
+	reg |= 0x80;
+
 	struct i2c_msg msgs[] = {
-		{ .addr = client->addr | 0xC0, .flags = 0, .len = sizeof(u8), .buf = &reg, },
-		{ .addr = client->addr | 0xC0, .flags = 0, .len = len, .buf = buf, },
+		{ .addr = client->addr, .flags = 0, .len = sizeof(u8), .buf = &reg, },
+		{ .addr = client->addr, .flags = 0, .len = len, .buf = buf, },
 	};
-	
+
 	error = i2c_transfer(client->adapter, msgs, ARRAY_SIZE(msgs));
 	if (error != ARRAY_SIZE(msgs)) {
-		dev_err(&client->dev,
-		"%s failed, reg: %d, error: %d\n",
-		__func__, reg, error);
-		
+		dev_err(&client->dev, "%s failed, reg: %d, error: %d\n",
+			__func__, reg, error);
+
 		return error;
 	}
-	
+
 	return 0;
 }
 
@@ -315,75 +316,133 @@ static int bbq10pmod_read_reg(struct bbq10pmod_data *drv_data, u8 reg, u8 *buf, 
 {
 	struct i2c_client *client = drv_data->client;
 	int error;
-	
+
 	struct i2c_msg msgs[] = {
-		{ .addr = client->addr, .flags = 0, .len = sizeof(u8), .buf = &reg, },
-		{ .addr = client->addr, .flags = I2C_M_RD, .len = len, .buf = buf }
+		{ .addr = client->addr, .flags = client->flags, .len = sizeof(u8), .buf = &reg, },
+		{ .addr = client->addr, .flags = client->flags | I2C_M_RD, .len = len, .buf = buf }
 	};
-	
+
 	error = i2c_transfer(client->adapter, msgs, ARRAY_SIZE(msgs));
 	if (error != ARRAY_SIZE(msgs)) {
-		dev_err(&client->dev,
-		"%s 1 failed, reg: %d, error: %d\n",
-		__func__, reg, error);
-		
+		dev_err(&client->dev, "%s failed, reg: %d, error: %d\n",
+			__func__, reg, error);
+
 		return error;
 	}
-	
-	msleep(100);
-	
+
 	return 0;
+}
+
+static void bbq10pmod_update_locks(struct bbq10pmod_data *drv_data)
+{
+	struct input_dev *input = drv_data->input;
+	struct i2c_client *client = drv_data->client;
+	u8 data;
+	int error;
+
+	error = bbq10pmod_read_reg(drv_data, REG_KEY, &data, sizeof(u8));
+	if (error < 0) {
+		dev_err(&client->dev, "%s failed to read REG_KEY, error: %d\n",
+			__func__, error);
+		return;
+	}
+
+	pr_warn("%s status: 0x%02X\n", __func__, data);
+
+	input_report_key(input, KEY_NUMLOCK, data & _KEY_NUMLOCK);
+	input_report_key(input, KEY_CAPSLOCK, data & _KEY_CAPSLOCK);
+
+	input_sync(input);
 }
 
 static void bbq10pmod_read_fifo(struct bbq10pmod_data *drv_data)
 {
 	struct input_dev *input = drv_data->input;
+	struct i2c_client *client = drv_data->client;
+	const struct key_entry *ke;
+	unsigned int keycode;
 	u8 data[2];
 	u8 count;
 	int error;
-	const struct key_entry *ke;
-	unsigned int keycode;
-	
+
 	error = bbq10pmod_read_reg(drv_data, REG_KEY, data, sizeof(u8));
-	if (error < 0)
-		dev_err(&drv_data->client->dev, "%s: Failed to read KEY: %d\n", __func__, error);
-		
-	printk("%s: status: 0x%02X\n", __func__, data[0]);
-	
+	if (error < 0) {
+		dev_err(&client->dev, "%s failed to read REG_KEY, error: %d\n",
+			__func__, error);
+		return;
+	}
+
+	pr_debug("%s status: 0x%02X\n", __func__, data[0]);
+
 	count = (data[0] & KEY_COUNT_MASK);
-	
+
 	while (count > 0) {
 		error = bbq10pmod_read_reg(drv_data, REG_FIF, data, sizeof(u8) * 2);
-		if (error < 0)
-			dev_err(&drv_data->client->dev, "%s: Failed to read KEY: %d\n", __func__, error);
-		
-		printk("%s: key %d/%c, state: %d\n", __func__, data[1], data[1], data[0]);
-		
+		if (error < 0) {
+			dev_err(&client->dev, "%s failed to read REG_FIF, error: %d\n",
+				__func__, error);
+			return;
+		}
+
+		pr_debug("%s key %d/%c, state: %d\n",
+			__func__, data[1], data[1], data[0]);
+
 		count -= 1;
-		
+
 		if (data[1] != 0 && data[1] != 0xFF && (data[0] == STATE_PRESS || data[0] == STATE_RELEASE)) {
 			ke = sparse_keymap_entry_from_scancode(input, data[1]);
 			keycode = ke ? ke->keycode : KEY_UNKNOWN;
-			printk("input data 0x%04x--> keycode %d\n", data[1], keycode);
+
+			pr_debug("%s input data 0x%04x--> keycode %d\n",
+				__func__, data[1], keycode);
+
+			if (keycode == KEY_UNKNOWN)
+				pr_warn("%s input data 0x%04x --> unknown\n",
+					__func__, data[1]);
 
 			input_report_key(input, keycode, data[0] == STATE_PRESS);
 		}
 	}
+
 	input_sync(input);
 }
 
 static irqreturn_t bbq10pmod_irq_handler(int irq, void *dev_id)
 {
 	struct bbq10pmod_data *drv_data = dev_id;
-	
-	printk("%s fired\n", __func__);
-	
-	// TODO: Read INT reg and see reason
-	
-	bbq10pmod_read_fifo(drv_data);
-	
-	// clear INT reg
-	
+	struct i2c_client *client = drv_data->client;
+	int error;
+	u8 reg;
+
+	pr_debug("%s fired\n", __func__);
+
+	error = bbq10pmod_read_reg(drv_data, REG_INT, &reg, sizeof(u8));
+	if (error < 0) {
+		dev_err(&client->dev, "%s: failed to read KEY: %d\n",
+			__func__, error);
+		return IRQ_NONE;
+	}
+
+	pr_warn("int: 0x%02x\n", reg);
+
+	if (reg == 0x00)
+		return IRQ_NONE;
+
+	if (reg & INT_OVERFLOW)
+		dev_warn(&client->dev, "overflow occurred\n");
+
+	if (reg & INT_CAPSLOCK || reg & INT_NUMLOCK)
+		bbq10pmod_update_locks(drv_data);
+
+	if (reg & INT_KEY)
+		bbq10pmod_read_fifo(drv_data);
+
+	reg = 0x00;
+	error = bbq10pmod_write_data(drv_data, REG_INT, &reg, sizeof(reg));
+	if (error < 0)
+		dev_err(&client->dev, "%s: failed to clear REG_INT, error: %d\n",
+			__func__, error);
+
 	return IRQ_HANDLED;
 }
 
@@ -394,66 +453,72 @@ static int bbq10pmod_probe(struct i2c_client *client, const struct i2c_device_id
 	struct input_dev *input;
 	int error;
 	u8 reg;
-	
+
 	drv_data = devm_kzalloc(dev, sizeof(*drv_data), GFP_KERNEL);
 	if (!drv_data)
 		return -ENOMEM;
-	
+
 	drv_data->client = client;
-	
+
 	error = bbq10pmod_write_reg(drv_data, REG_RST);
 	if (error)
 		return -ENODEV;
-		
+
 	msleep(100);
-	
-	//reg = 0;
-	//error = bbq10pmod_write_data(drv_data, REG_BKL, &reg, 1);
-	//if (error)
-	//	return -ENODEV;
-	
+
 	error = bbq10pmod_read_reg(drv_data, REG_VER, &reg, sizeof(reg));
 	if (error)
 		return -ENODEV;
-		
-	printk("%s: version: 0x%02X\n", __func__, reg);
-	
+
+	printk("%s version: 0x%02X\n", __func__, reg);
+
+	reg = 0x55; // TODO: make a sysfs device
+	error = bbq10pmod_write_data(drv_data, REG_BKL, &reg, sizeof(reg));
+	if (error)
+		return -ENODEV;
+
+	reg = CFG_OVERFLOW_ON | CFG_OVERFLOW_INT | CFG_CAPSLOCK_INT |
+			CFG_NUMLOCK_INT | CFG_KEY_INT | CFG_REPORT_MODS;
+	error = bbq10pmod_write_data(drv_data, REG_CFG, &reg, sizeof(reg));
+	if (error)
+		return -ENODEV;
+
 	input = devm_input_allocate_device(dev);
 	if (!input)
 		return -ENOMEM;
-		
+
 	drv_data->input = input;
-	
+
 	input->name = client->name;
 	input->id.bustype = BUS_I2C;
 	input->id.vendor  = 0x0001;
 	input->id.product = 0x0001;
 	input->id.version = 0x0001;
-	
+
 	//if (device_property_read_bool(dev, "keypad,autorepeat"))
 	//	__set_bit(EV_REP, input->evbit);
-	
+
 	//input_set_capability(input, EV_MSC, MSC_SCAN);
-	
+
 	error = sparse_keymap_setup(input, bbq10pmod_keys, NULL);
 	if (error)
 		return error;
-	
+
 	error = devm_request_threaded_irq(dev, client->irq,
 										NULL, bbq10pmod_irq_handler,
 										IRQF_SHARED | IRQF_ONESHOT,
 										client->name, drv_data);
 	if (error) {
-		dev_err(dev, "Unable to claim irq %d; error %d\n", client->irq, error);
+		dev_err(dev, "Failed to claim irq %d; error %d\n", client->irq, error);
 		return error;
 	}
-	
+
 	error = input_register_device(input);
 	if (error) {
-		dev_err(dev, "Unable to register input device, error: %d\n", error);
+		dev_err(dev, "Failed to register input device, error: %d\n", error);
 		return error;
 	}
-	
+
 	return 0;
 }
 
