@@ -8,7 +8,6 @@
 #include <linux/property.h>
 #include <linux/slab.h>
 #include <linux/types.h>
-#include <linux/input/sparse-keymap.h>
 
 //#define DEBUG
 
@@ -48,226 +47,61 @@
 #define STATE_PRESS		1
 #define STATE_IDLE		0
 
+#define NUM_KEYCODES	256
+
+static unsigned short keycodes[NUM_KEYCODES] = {
+	[0x01] = KEY_UP,
+	[0x02] = KEY_DOWN,
+	[0x03] = KEY_LEFT,
+	[0x04] = KEY_RIGHT,
+	[0x05] = KEY_ENTER,
+	[0x06] = KEY_MENU,
+	[0x07] = KEY_BACK,
+
+	[17] = KEY_LEFTALT,
+	[18] = KEY_LEFTSHIFT,
+	[19] = KEY_LEFTCTRL,
+
+	['A'] = KEY_A,
+	['B'] = KEY_B,
+	['C'] = KEY_C,
+	['D'] = KEY_D,
+	['E'] = KEY_E,
+	['F'] = KEY_F,
+	['G'] = KEY_G,
+	['H'] = KEY_H,
+	['I'] = KEY_I,
+	['J'] = KEY_J,
+	['K'] = KEY_K,
+	['L'] = KEY_L,
+	['M'] = KEY_M,
+	['N'] = KEY_N,
+	['O'] = KEY_O,
+	['P'] = KEY_P,
+	['Q'] = KEY_Q,
+	['R'] = KEY_R,
+	['S'] = KEY_S,
+	['T'] = KEY_T,
+	['U'] = KEY_U,
+	['W'] = KEY_W,
+	['V'] = KEY_V,
+	['X'] = KEY_X,
+	['Y'] = KEY_Y,
+	['Z'] = KEY_Z,
+
+	[' '] = KEY_SPACE,
+	['~'] = KEY_0,
+	['$'] = KEY_GRAVE,
+
+	['\b'] = KEY_BACKSPACE,
+	['\n'] = KEY_ENTER,
+};
+
 struct bbq10pmod_data {
+	unsigned short keycode[NUM_KEYCODES];
 	struct i2c_client *client;
 	struct input_dev *input;
 };
-
-static const struct key_entry bbq10pmod_keys[] = {
-	{ KE_KEY, 0x01, { KEY_UP } },
-	{ KE_KEY, 0x02, { KEY_DOWN } },
-	{ KE_KEY, 0x03, { KEY_LEFT } },
-	{ KE_KEY, 0x04, { KEY_RIGHT } },
-	{ KE_KEY, 0x05, { KEY_ENTER } },
-	{ KE_KEY, 0x06, { KEY_MENU } },
-	{ KE_KEY, 0x07, { KEY_BACK } },
-
-	{ KE_KEY, 17, { KEY_LEFTALT } },
-	{ KE_KEY, 18, { KEY_LEFTSHIFT } },
-	{ KE_KEY, 19, { KEY_LEFTCTRL } },
-
-	{ KE_KEY, 'A', { KEY_A } },
-	{ KE_KEY, 'B', { KEY_B } },
-	{ KE_KEY, 'C', { KEY_C } },
-	{ KE_KEY, 'D', { KEY_D } },
-	{ KE_KEY, 'E', { KEY_E } },
-	{ KE_KEY, 'F', { KEY_F } },
-	{ KE_KEY, 'G', { KEY_G } },
-	{ KE_KEY, 'H', { KEY_H } },
-	{ KE_KEY, 'I', { KEY_I } },
-	{ KE_KEY, 'J', { KEY_J } },
-	{ KE_KEY, 'K', { KEY_K } },
-	{ KE_KEY, 'L', { KEY_L } },
-	{ KE_KEY, 'M', { KEY_M } },
-	{ KE_KEY, 'N', { KEY_N } },
-	{ KE_KEY, 'O', { KEY_O } },
-	{ KE_KEY, 'P', { KEY_P } },
-	{ KE_KEY, 'Q', { KEY_Q } },
-	{ KE_KEY, 'R', { KEY_R } },
-	{ KE_KEY, 'S', { KEY_S } },
-	{ KE_KEY, 'T', { KEY_T } },
-	{ KE_KEY, 'U', { KEY_U } },
-	{ KE_KEY, 'W', { KEY_W } },
-	{ KE_KEY, 'V', { KEY_V } },
-	{ KE_KEY, 'X', { KEY_X } },
-	{ KE_KEY, 'Y', { KEY_Y } },
-	{ KE_KEY, 'Z', { KEY_Z } },
-	{ KE_KEY, '\b', { KEY_BACKSPACE } },
-	{ KE_KEY, ' ', { KEY_SPACE } },
-	{ KE_KEY, '\n', { KEY_ENTER } },
-	{ KE_KEY, '~', { KEY_GRAVE } },
-
-	{ KE_KEY, 254, { KEY_NUMLOCK } },
-	{ KE_KEY, 255, { KEY_CAPSLOCK } },
-};
-
-static unsigned int sparse_keymap_get_key_index(struct input_dev *dev,
-						const struct key_entry *k)
-{
-	struct key_entry *key;
-	unsigned int idx = 0;
-
-	for (key = dev->keycode; key->type != KE_END; key++) {
-		if (key->type == KE_KEY) {
-			if (key == k)
-				break;
-			idx++;
-		}
-	}
-
-	return idx;
-}
-
-static struct key_entry *sparse_keymap_entry_by_index(struct input_dev *dev,
-						      unsigned int index)
-{
-	struct key_entry *key;
-	unsigned int key_cnt = 0;
-
-	for (key = dev->keycode; key->type != KE_END; key++)
-		if (key->type == KE_KEY)
-			if (key_cnt++ == index)
-				return key;
-
-	return NULL;
-}
-
-struct key_entry *sparse_keymap_entry_from_scancode(struct input_dev *dev,
-						    unsigned int code)
-{
-	struct key_entry *key;
-
-	for (key = dev->keycode; key->type != KE_END; key++)
-		if (code == key->code)
-			return key;
-
-	return NULL;
-}
-
-struct key_entry *sparse_keymap_entry_from_keycode(struct input_dev *dev,
-						   unsigned int keycode)
-{
-	struct key_entry *key;
-
-	for (key = dev->keycode; key->type != KE_END; key++)
-		if (key->type == KE_KEY && keycode == key->keycode)
-			return key;
-
-	return NULL;
-}
-
-static struct key_entry *sparse_keymap_locate(struct input_dev *dev,
-					const struct input_keymap_entry *ke)
-{
-	struct key_entry *key;
-	unsigned int scancode;
-
-	if (ke->flags & INPUT_KEYMAP_BY_INDEX)
-		key = sparse_keymap_entry_by_index(dev, ke->index);
-	else if (input_scancode_to_scalar(ke, &scancode) == 0)
-		key = sparse_keymap_entry_from_scancode(dev, scancode);
-	else
-		key = NULL;
-
-	return key;
-}
-
-static int sparse_keymap_getkeycode(struct input_dev *dev,
-				    struct input_keymap_entry *ke)
-{
-	const struct key_entry *key;
-
-	if (dev->keycode) {
-		key = sparse_keymap_locate(dev, ke);
-		if (key && key->type == KE_KEY) {
-			ke->keycode = key->keycode;
-			if (!(ke->flags & INPUT_KEYMAP_BY_INDEX))
-				ke->index =
-					sparse_keymap_get_key_index(dev, key);
-			ke->len = sizeof(key->code);
-			memcpy(ke->scancode, &key->code, sizeof(key->code));
-			return 0;
-		}
-	}
-
-	return -EINVAL;
-}
-
-static int sparse_keymap_setkeycode(struct input_dev *dev,
-				    const struct input_keymap_entry *ke,
-				    unsigned int *old_keycode)
-{
-	struct key_entry *key;
-
-	if (dev->keycode) {
-		key = sparse_keymap_locate(dev, ke);
-		if (key && key->type == KE_KEY) {
-			*old_keycode = key->keycode;
-			key->keycode = ke->keycode;
-			set_bit(ke->keycode, dev->keybit);
-			if (!sparse_keymap_entry_from_keycode(dev, *old_keycode))
-				clear_bit(*old_keycode, dev->keybit);
-			return 0;
-		}
-	}
-
-	return -EINVAL;
-}
-
-int sparse_keymap_setup(struct input_dev *dev,
-			const struct key_entry *keymap,
-			int (*setup)(struct input_dev *, struct key_entry *))
-{
-	size_t map_size = 1; /* to account for the last KE_END entry */
-	const struct key_entry *e;
-	struct key_entry *map, *entry;
-	int i;
-	int error;
-
-	for (e = keymap; e->type != KE_END; e++)
-		map_size++;
-
-	map = devm_kmemdup(&dev->dev, keymap, map_size * sizeof(*map),
-			   GFP_KERNEL);
-	if (!map)
-		return -ENOMEM;
-
-	for (i = 0; i < map_size; i++) {
-		entry = &map[i];
-
-		if (setup) {
-			error = setup(dev, entry);
-			if (error)
-				return error;
-		}
-
-		switch (entry->type) {
-		case KE_KEY:
-			__set_bit(EV_KEY, dev->evbit);
-			__set_bit(entry->keycode, dev->keybit);
-			break;
-
-		case KE_SW:
-		case KE_VSW:
-			__set_bit(EV_SW, dev->evbit);
-			__set_bit(entry->sw.code, dev->swbit);
-			break;
-		}
-	}
-
-	if (test_bit(EV_KEY, dev->evbit)) {
-		__set_bit(KEY_UNKNOWN, dev->keybit);
-		__set_bit(EV_MSC, dev->evbit);
-		__set_bit(MSC_SCAN, dev->mscbit);
-	}
-
-	dev->keycode = map;
-	dev->keycodemax = map_size;
-	dev->getkeycode = sparse_keymap_getkeycode;
-	dev->setkeycode = sparse_keymap_setkeycode;
-
-	return 0;
-}
 
 static int bbq10pmod_write_reg(struct bbq10pmod_data *drv_data, u8 reg)
 {
@@ -349,8 +183,8 @@ static void bbq10pmod_update_locks(struct bbq10pmod_data *drv_data)
 
 	pr_warn("%s status: 0x%02X\n", __func__, data);
 
-	input_report_key(input, KEY_NUMLOCK, data & _KEY_NUMLOCK);
-	input_report_key(input, KEY_CAPSLOCK, data & _KEY_CAPSLOCK);
+	//input_report_key(input, KEY_NUMLOCK, data & _KEY_NUMLOCK);
+	//input_report_key(input, KEY_CAPSLOCK, data & _KEY_CAPSLOCK);
 
 	input_sync(input);
 }
@@ -359,7 +193,6 @@ static void bbq10pmod_read_fifo(struct bbq10pmod_data *drv_data)
 {
 	struct input_dev *input = drv_data->input;
 	struct i2c_client *client = drv_data->client;
-	const struct key_entry *ke;
 	unsigned int keycode;
 	u8 data[2];
 	u8 count;
@@ -389,18 +222,15 @@ static void bbq10pmod_read_fifo(struct bbq10pmod_data *drv_data)
 
 		count -= 1;
 
-		if (data[1] != 0 && data[1] != 0xFF && (data[0] == STATE_PRESS || data[0] == STATE_RELEASE)) {
-			ke = sparse_keymap_entry_from_scancode(input, data[1]);
-			keycode = ke ? ke->keycode : KEY_UNKNOWN;
+		if (data[0] == STATE_PRESS || data[0] == STATE_RELEASE) {
+			input_event(input, EV_MSC, MSC_SCAN, data[1]);
 
-			pr_debug("%s input data 0x%04x--> keycode %d\n",
-				__func__, data[1], keycode);
-
-			if (keycode == KEY_UNKNOWN)
-				pr_warn("%s input data 0x%04x --> unknown\n",
-					__func__, data[1]);
-
-			input_report_key(input, keycode, data[0] == STATE_PRESS);
+			keycode = drv_data->keycode[data[1]];
+			if (keycode == KEY_UNKNOWN) {
+				pr_warn("%s code 0x%02X UNKNOWN\n", __func__, data[1]);
+			} else {
+				input_report_key(input, keycode, data[0] == STATE_PRESS);
+			}
 		}
 	}
 
@@ -423,7 +253,7 @@ static irqreturn_t bbq10pmod_irq_handler(int irq, void *dev_id)
 		return IRQ_NONE;
 	}
 
-	pr_warn("int: 0x%02x\n", reg);
+	pr_debug("int: 0x%02x\n", reg);
 
 	if (reg == 0x00)
 		return IRQ_NONE;
@@ -452,6 +282,7 @@ static int bbq10pmod_probe(struct i2c_client *client, const struct i2c_device_id
 	struct bbq10pmod_data *drv_data;
 	struct input_dev *input;
 	int error;
+	int i;
 	u8 reg;
 
 	drv_data = devm_kzalloc(dev, sizeof(*drv_data), GFP_KERNEL);
@@ -459,6 +290,7 @@ static int bbq10pmod_probe(struct i2c_client *client, const struct i2c_device_id
 		return -ENOMEM;
 
 	drv_data->client = client;
+	memcpy(drv_data->keycode, keycodes, sizeof(drv_data->keycode));
 
 	error = bbq10pmod_write_reg(drv_data, REG_RST);
 	if (error)
@@ -494,15 +326,19 @@ static int bbq10pmod_probe(struct i2c_client *client, const struct i2c_device_id
 	input->id.vendor  = 0x0001;
 	input->id.product = 0x0001;
 	input->id.version = 0x0001;
+	input->keycode = drv_data->keycode;
+	input->keycodesize = sizeof(drv_data->keycode[0]);
+	input->keycodemax = ARRAY_SIZE(drv_data->keycode);
 
-	//if (device_property_read_bool(dev, "keypad,autorepeat"))
-	//	__set_bit(EV_REP, input->evbit);
+	for (i = 0; i < NUM_KEYCODES; i++)
+		__set_bit(drv_data->keycode[i], input->keybit);
 
-	//input_set_capability(input, EV_MSC, MSC_SCAN);
+	__clear_bit(KEY_RESERVED, input->keybit);
 
-	error = sparse_keymap_setup(input, bbq10pmod_keys, NULL);
-	if (error)
-		return error;
+	__set_bit(EV_REP, input->evbit);
+	__set_bit(EV_KEY, input->evbit);
+
+	input_set_capability(input, EV_MSC, MSC_SCAN);
 
 	error = devm_request_threaded_irq(dev, client->irq,
 										NULL, bbq10pmod_irq_handler,
