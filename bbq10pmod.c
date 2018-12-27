@@ -1,3 +1,4 @@
+#include <linux/backlight.h>
 #include <linux/delay.h>
 #include <linux/i2c.h>
 #include <linux/init.h>
@@ -5,6 +6,7 @@
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/of.h>
+#include <linux/platform_device.h>
 #include <linux/property.h>
 #include <linux/slab.h>
 #include <linux/types.h>
@@ -123,7 +125,7 @@ static int bbq10pmod_write_reg(struct bbq10pmod_data *drv_data, u8 reg)
 	return 0;
 }
 
-static int bbq10pmod_write_data(struct bbq10pmod_data *drv_data, u8 reg, u8 *buf, u8 len)
+static int bbq10pmod_write_data(struct bbq10pmod_data *drv_data, u8 reg, const u8 *buf, u8 len)
 {
 	struct i2c_client *client = drv_data->client;
 	int error;
@@ -132,7 +134,7 @@ static int bbq10pmod_write_data(struct bbq10pmod_data *drv_data, u8 reg, u8 *buf
 
 	struct i2c_msg msgs[] = {
 		{ .addr = client->addr, .flags = 0, .len = sizeof(u8), .buf = &reg, },
-		{ .addr = client->addr, .flags = 0, .len = len, .buf = buf, },
+		{ .addr = client->addr, .flags = 0, .len = len, .buf = (u8*)buf, },
 	};
 
 	error = i2c_transfer(client->adapter, msgs, ARRAY_SIZE(msgs));
@@ -276,10 +278,31 @@ static irqreturn_t bbq10pmod_irq_handler(int irq, void *dev_id)
 	return IRQ_HANDLED;
 }
 
+static int bbq10pmod_backlight_update_status(struct backlight_device *bd)
+{
+	const struct backlight_properties *p = &bd->props;
+	const u8 intensity = (p->power == FB_BLANK_UNBLANK) ? p->brightness : 0;
+	struct bbq10pmod_data *drv_data = dev_get_drvdata(&bd->dev);
+
+	return bbq10pmod_write_data(drv_data, REG_BKL, &intensity, sizeof(intensity));
+}
+
+static const struct backlight_ops backlight_ops = {
+	.options		= BL_CORE_SUSPENDRESUME,
+	.update_status	= bbq10pmod_backlight_update_status,
+};
+
+static struct backlight_properties backlight_props = {
+	.type			= BACKLIGHT_PLATFORM,
+	.max_brightness = 255,
+	.brightness		= 127,
+};
+
 static int bbq10pmod_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
 	struct device *dev = &client->dev;
 	struct bbq10pmod_data *drv_data;
+	struct backlight_device *bd;
 	struct input_dev *input;
 	int error;
 	int i;
@@ -304,14 +327,20 @@ static int bbq10pmod_probe(struct i2c_client *client, const struct i2c_device_id
 
 	printk("%s version: 0x%02X\n", __func__, reg);
 
-	reg = 0x55; // TODO: make a sysfs device
-	error = bbq10pmod_write_data(drv_data, REG_BKL, &reg, sizeof(reg));
-	if (error)
-		return -ENODEV;
-
 	reg = CFG_OVERFLOW_ON | CFG_OVERFLOW_INT | CFG_CAPSLOCK_INT |
 			CFG_NUMLOCK_INT | CFG_KEY_INT | CFG_REPORT_MODS;
 	error = bbq10pmod_write_data(drv_data, REG_CFG, &reg, sizeof(reg));
+	if (error)
+		return -ENODEV;
+
+	bd = devm_backlight_device_register(dev, client->name, dev,
+					    drv_data,
+					    &backlight_ops,
+					    &backlight_props);
+	if (IS_ERR(bd))
+		return PTR_ERR(bd);
+
+	error = backlight_update_status(bd);
 	if (error)
 		return -ENODEV;
 
